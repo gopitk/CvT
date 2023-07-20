@@ -41,7 +41,6 @@ def parse_args():
                         type=str)
 
     # distributed training
-    parser.add_argument("--local_rank", type=int, default=0)
     parser.add_argument("--port", type=int, default=9000)
 
     parser.add_argument('opts',
@@ -57,7 +56,8 @@ def parse_args():
 def main():
     args = parse_args()
 
-    init_distributed(args)
+    local_rank = int(os.environ["LOCAL_RANK"])
+    init_distributed(args,local_rank)
     setup_cudnn(config)
 
     update_config(config, args)
@@ -99,7 +99,7 @@ def main():
 
     if args.distributed:
         model = torch.nn.parallel.DistributedDataParallel(
-            model, device_ids=[args.local_rank], output_device=args.local_rank
+            model, device_ids=[local_rank], output_device=local_rank
         )
 
     # define loss function (criterion) and optimizer

@@ -53,18 +53,18 @@ def create_logger(cfg, cfg_name, phase='train'):
     return str(final_output_dir)
 
 
-def init_distributed(args):
+def init_distributed(args,local_rank):
     args.num_gpus = int(os.environ["WORLD_SIZE"]) \
         if "WORLD_SIZE" in os.environ else 1
     args.distributed = args.num_gpus > 1
 
     if args.distributed:
         print("=> init process group start")
-        torch.cuda.set_device(args.local_rank)
+        torch.cuda.set_device(local_rank)
         torch.distributed.init_process_group(
             backend="nccl", init_method="env://",
             timeout=timedelta(minutes=180))
-        comm.local_rank = args.local_rank
+        comm.local_rank = local_rank
         print("=> init process group end")
 
 
