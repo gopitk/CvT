@@ -33,7 +33,7 @@ from utils.utils import resume_checkpoint
 from utils.utils import save_checkpoint_on_master
 from utils.utils import save_model_on_master
 
-from rpdTracerControl import rpdTracerControl
+#from rpdTracerControl import rpdTracerControl
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -122,11 +122,11 @@ def main():
     lr_scheduler = build_lr_scheduler(config, optimizer, begin_epoch)
 
     scaler = torch.cuda.amp.GradScaler(enabled=config.AMP.ENABLED)
-    rpdTracerControl.setFilename(name = "/rocm/trace"+str(local_rank)+".rpd", append=False)
-    profile = rpdTracerControl()      #######
-    prof = torch.autograd.profiler.emit_nvtx(record_shapes=True)
-    profile.start()
-    prof.__enter__()
+    #rpdTracerControl.setFilename(name = "/rocm/trace"+str(local_rank)+".rpd", append=False)
+    #profile = rpdTracerControl()      #######
+    #prof = torch.autograd.profiler.emit_nvtx(record_shapes=True)
+    #profile.start()
+    #prof.__enter__()
 
     logging.info('=> start training')
     for epoch in range(begin_epoch, config.TRAIN.END_EPOCH):
@@ -208,8 +208,8 @@ def main():
             '=> {} epoch end, duration : {:.2f}s'
             .format(head, time.time()-start)
         )
-    prof.__exit__(None, None, None)
-    profile.stop()
+    #prof.__exit__(None, None, None)
+    #profile.stop()
     save_model_on_master(
         model, args.distributed, final_output_dir, 'final_state.pth'
     )
