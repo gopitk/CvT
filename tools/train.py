@@ -139,15 +139,11 @@ def main():
 
         # train for one epoch
         logging.info('=> {} train start'.format(head))
-        #profile.start()
-        #prof.__enter__()
 
         with torch.autograd.set_detect_anomaly(config.TRAIN.DETECT_ANOMALY):
             train_one_epoch(config, train_loader, model, criterion, optimizer,
                             epoch, final_output_dir, tb_log_dir, writer_dict,
                             scaler=scaler)
-        #prof.__exit__(None, None, None)
-        #profile.stop()
 
         logging.info(
             '=> {} train end, duration: {:.2f}s'
@@ -208,6 +204,7 @@ def main():
             '=> {} epoch end, duration : {:.2f}s'
             .format(head, time.time()-start)
         )
+    
     #prof.__exit__(None, None, None)
     #profile.stop()
     save_model_on_master(
