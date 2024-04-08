@@ -144,7 +144,8 @@ def main():
             if local_rank == 0:
                 with torch.profiler.profile(
                     record_shapes=True,
-                    activities=[torch.profiler.ProfilerActivity.CPU,torch.profiler.ProfilerActivity.CUDA]
+                    activities=[torch.profiler.ProfilerActivity.CPU,torch.profiler.ProfilerActivity.CUDA],
+                    on_trace_ready=torch.profiler.tensorboard_trace_handler('./amd_log')
                 ) as prof:
                     train_one_epoch(config, train_loader, model, criterion, optimizer,
                             epoch, final_output_dir, tb_log_dir, writer_dict,
