@@ -128,7 +128,6 @@ def main():
     #profile.start()
     #prof.__enter__()
 
-    local_rank = int(os.getenv('LOCAL_RANK'))
     logging.info('=> start training')
     for epoch in range(begin_epoch, config.TRAIN.END_EPOCH):
         head = 'Epoch[{}]:'.format(epoch)
