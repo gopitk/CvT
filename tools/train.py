@@ -33,7 +33,14 @@ from utils.utils import resume_checkpoint
 from utils.utils import save_checkpoint_on_master
 from utils.utils import save_model_on_master
 
-#from rpdTracerControl import rpdTracerControl
+from rpdTracerControl import rpdTracerControl
+
+from enum import Enum
+
+class Profile(Enum):
+    NONE=1
+    PT_TRACE=2
+    RPD_TRACE=3
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -122,11 +129,6 @@ def main():
     lr_scheduler = build_lr_scheduler(config, optimizer, begin_epoch)
 
     scaler = torch.cuda.amp.GradScaler(enabled=config.AMP.ENABLED)
-    #rpdTracerControl.setFilename(name = "/rocm/trace"+str(local_rank)+".rpd", append=False)
-    #profile = rpdTracerControl()      #######
-    #prof = torch.autograd.profiler.emit_nvtx(record_shapes=True)
-    #profile.start()
-    #prof.__enter__()
 
     logging.info('=> start training')
     for epoch in range(begin_epoch, config.TRAIN.END_EPOCH):
@@ -140,22 +142,39 @@ def main():
         # train for one epoch
         logging.info('=> {} train start'.format(head))
 
-        with torch.autograd.set_detect_anomaly(config.TRAIN.DETECT_ANOMALY):
-            if local_rank == 0:
-                with torch.profiler.profile(
+        # set profiling type and epoch to be analyzed
+        analysis = Profile.NONE
+        epoch_to_be_analyzed = 5
+
+        # start profiling trace on (GPU0 and epoch to be analyzed)
+        if local_rank == 0 and epoch == epoch_to_be_analyzed:
+            if analysis == Profile.PT_TRACE:
+                prof = torch.profiler.profile(
                     record_shapes=True,
                     activities=[torch.profiler.ProfilerActivity.CPU,torch.profiler.ProfilerActivity.CUDA],
-                    on_trace_ready=torch.profiler.tensorboard_trace_handler('./amd_log')
-                ) as prof:
-                    train_one_epoch(config, train_loader, model, criterion, optimizer,
-                            epoch, final_output_dir, tb_log_dir, writer_dict,
-                            scaler=scaler)
-                    prof.step()
+                    on_trace_ready=torch.profiler.tensorboard_trace_handler("./cvt_pt_GPU" + str(local_rank) + "_epoch" + str(epoch)))
+                prof.start()
+            elif analysis == Profile.RPD_TRACE:
+                rpdTracerControl.setFilename(name = "./cvt_rpd_GPU" + str(local_rank) + "_epoch" + str(epoch) + ".rpd", append=False)
+                profile = rpdTracerControl()      #######
+                prof = torch.autograd.profiler.emit_nvtx(record_shapes=True)
+                profile.start()
+                prof.__enter__()
+
+        # run training epoch
+        with torch.autograd.set_detect_anomaly(config.TRAIN.DETECT_ANOMALY):
+            train_one_epoch(config, train_loader, model, criterion, optimizer,
+                epoch, final_output_dir, tb_log_dir, writer_dict,
+                scaler=scaler)
+        
+        # stop profiling    
+        if local_rank == 0 and epoch == epoch_to_be_analyzed:
+            if analysis == Profile.PT_TRACE:
+                prof.stop()
                 print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
-            else:
-                train_one_epoch(config, train_loader, model, criterion, optimizer,
-                            epoch, final_output_dir, tb_log_dir, writer_dict,
-                            scaler=scaler)
+            elif analysis == Profile.RPD_TRACE:
+                prof.__exit__(None, None, None)
+                profile.stop()
 
         logging.info(
             '=> {} train end, duration: {:.2f}s'
@@ -217,8 +236,6 @@ def main():
             .format(head, time.time()-start)
         )
     
-    #prof.__exit__(None, None, None)
-    #profile.stop()
     save_model_on_master(
         model, args.distributed, final_output_dir, 'final_state.pth'
     )
