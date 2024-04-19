@@ -113,6 +113,7 @@ def main():
             output_device=local_rank,
             find_unused_parameters=True
         )
+    
     criterion = build_criterion(config)
     criterion.cuda()
     criterion_eval = build_criterion(config, train=False)
@@ -216,6 +217,7 @@ def main():
             '=> {} epoch end, duration : {:.2f}s'
             .format(head, time.time()-start)
         )
+    
     save_model_on_master(
         model, args.distributed, final_output_dir, 'final_state.pth'
     )
