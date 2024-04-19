@@ -217,7 +217,7 @@ def main():
             '=> {} epoch end, duration : {:.2f}s'
             .format(head, time.time()-start)
         )
-        
+
     save_model_on_master(
         model, args.distributed, final_output_dir, 'final_state.pth'
     )
