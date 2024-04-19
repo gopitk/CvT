@@ -33,6 +33,7 @@ from utils.utils import resume_checkpoint
 from utils.utils import save_checkpoint_on_master
 from utils.utils import save_model_on_master
 
+from rpdTracerControl import rpdTracerControl
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -133,10 +134,30 @@ def main():
 
         # train for one epoch
         logging.info('=> {} train start'.format(head))
+
+        # set profiling type and epoch to be analyzed
+        rpd_tracing = False
+        epoch_to_be_analyzed = 5
+
+        # start rpd profiling trace on (GPU0 and epoch to be analyzed)
+        if rpd_tracing and local_rank == 0 and epoch == epoch_to_be_analyzed:
+            rpdTracerControl.setFilename(name = "/workspace/trace.rpd", append=False)
+            profile = rpdTracerControl()
+            prof = torch.autograd.profiler.emit_nvtx(record_shapes=True)
+            profile.start()
+            prof.__enter__()
+
+        # run training epoch
         with torch.autograd.set_detect_anomaly(config.TRAIN.DETECT_ANOMALY):
             train_one_epoch(config, train_loader, model, criterion, optimizer,
                             epoch, final_output_dir, tb_log_dir, writer_dict,
                             scaler=scaler)
+        
+        # stop profiling    
+        if rpd_tracing and local_rank == 0 and epoch == epoch_to_be_analyzed:
+            prof.__exit__(None, None, None)
+            profile.stop()
+
         logging.info(
             '=> {} train end, duration: {:.2f}s'
             .format(head, time.time()-start)
