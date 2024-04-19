@@ -143,23 +143,16 @@ def main():
         logging.info('=> {} train start'.format(head))
 
         # set profiling type and epoch to be analyzed
-        analysis = Profile.NONE
+        rpd_tracing = True
         epoch_to_be_analyzed = 5
 
-        # start profiling trace on (GPU0 and epoch to be analyzed)
-        if local_rank == 0 and epoch == epoch_to_be_analyzed:
-            if analysis == Profile.PT_TRACE:
-                prof = torch.profiler.profile(
-                    record_shapes=True,
-                    activities=[torch.profiler.ProfilerActivity.CPU,torch.profiler.ProfilerActivity.CUDA],
-                    on_trace_ready=torch.profiler.tensorboard_trace_handler("./cvt_pt_GPU" + str(local_rank) + "_epoch" + str(epoch)))
-                prof.start()
-            elif analysis == Profile.RPD_TRACE:
-                rpdTracerControl.setFilename(name = "./cvt_rpd_GPU" + str(local_rank) + "_epoch" + str(epoch) + ".rpd", append=False)
-                profile = rpdTracerControl()      #######
-                prof = torch.autograd.profiler.emit_nvtx(record_shapes=True)
-                profile.start()
-                prof.__enter__()
+        # start rpd profiling trace on (GPU0 and epoch to be analyzed)
+        if rpd_tracing and local_rank == 0 and epoch == epoch_to_be_analyzed:
+            rpdTracerControl.setFilename(name = "/workspace/trace.rpd", append=False)
+            profile = rpdTracerControl()
+            prof = torch.autograd.profiler.emit_nvtx(record_shapes=True)
+            profile.start()
+            prof.__enter__()
 
         # run training epoch
         with torch.autograd.set_detect_anomaly(config.TRAIN.DETECT_ANOMALY):
@@ -168,13 +161,9 @@ def main():
                 scaler=scaler)
         
         # stop profiling    
-        if local_rank == 0 and epoch == epoch_to_be_analyzed:
-            if analysis == Profile.PT_TRACE:
-                prof.stop()
-                print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
-            elif analysis == Profile.RPD_TRACE:
-                prof.__exit__(None, None, None)
-                profile.stop()
+        if rpd_tracing and local_rank == 0 and epoch == epoch_to_be_analyzed:
+            prof.__exit__(None, None, None)
+            profile.stop()
 
         logging.info(
             '=> {} train end, duration: {:.2f}s'
