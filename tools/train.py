@@ -136,7 +136,7 @@ def main():
         logging.info('=> {} train start'.format(head))
 
         # set profiling type and epoch to be analyzed
-        rpd_tracing = True
+        rpd_tracing = False
         epoch_to_be_analyzed = 5
 
         # start rpd profiling trace on (GPU0 and epoch to be analyzed)
