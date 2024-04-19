@@ -35,13 +35,6 @@ from utils.utils import save_model_on_master
 
 from rpdTracerControl import rpdTracerControl
 
-from enum import Enum
-
-class Profile(Enum):
-    NONE=1
-    PT_TRACE=2
-    RPD_TRACE=3
-
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Train classification network')
@@ -120,7 +113,6 @@ def main():
             output_device=local_rank,
             find_unused_parameters=True
         )
-    
     criterion = build_criterion(config)
     criterion.cuda()
     criterion_eval = build_criterion(config, train=False)
@@ -157,8 +149,8 @@ def main():
         # run training epoch
         with torch.autograd.set_detect_anomaly(config.TRAIN.DETECT_ANOMALY):
             train_one_epoch(config, train_loader, model, criterion, optimizer,
-                epoch, final_output_dir, tb_log_dir, writer_dict,
-                scaler=scaler)
+                            epoch, final_output_dir, tb_log_dir, writer_dict,
+                            scaler=scaler)
         
         # stop profiling    
         if rpd_tracing and local_rank == 0 and epoch == epoch_to_be_analyzed:
@@ -224,7 +216,6 @@ def main():
             '=> {} epoch end, duration : {:.2f}s'
             .format(head, time.time()-start)
         )
-    
     save_model_on_master(
         model, args.distributed, final_output_dir, 'final_state.pth'
     )
