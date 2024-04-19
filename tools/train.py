@@ -113,7 +113,7 @@ def main():
             output_device=local_rank,
             find_unused_parameters=True
         )
-        
+    
     criterion = build_criterion(config)
     criterion.cuda()
     criterion_eval = build_criterion(config, train=False)
